@@ -437,8 +437,7 @@ class RequestOpenNotification(Notification):
 
 
 class RequestCloseNotification(Notification):
-    def __init__(self, conn, uid, reqid, reason):
-        self._user = username_from_id(conn, uid) if int(uid) else None
+    def __init__(self, conn, reqid):
         cur = conn.execute('SELECT DISTINCT Users.Email FROM PackageRequests ' +
                            'INNER JOIN PackageBases ' +
                            'ON PackageBases.ID = PackageRequests.PackageBaseID ' +
@@ -448,16 +447,19 @@ class RequestCloseNotification(Notification):
                            'WHERE PackageRequests.ID = ?', [reqid])
         self._to = aurweb.config.get('options', 'aur_request_ml')
         self._cc = [row[0] for row in cur.fetchall()]
-        cur = conn.execute('SELECT PackageRequests.ClosureComment, ' +
+        cur = conn.execute('SELECT PackageRequests.Status, ' +
+                           'PackageRequests.ClosedUID, ' +
+                           'PackageRequests.ClosureComment, ' +
                            'RequestTypes.Name, ' +
                            'PackageRequests.PackageBaseName ' +
                            'FROM PackageRequests ' +
                            'INNER JOIN RequestTypes ' +
                            'ON RequestTypes.ID = PackageRequests.ReqTypeID ' +
                            'WHERE PackageRequests.ID = ?', [reqid])
-        self._text, self._reqtype, self._pkgbase = cur.fetchone()
+        status, uid, self._text, self._reqtype, self._pkgbase = cur.fetchone()
+        self._reason = 'accepted' if status == 2 else 'rejected'
+        self._user = username_from_id(conn, uid) if uid else None
         self._reqid = int(reqid)
-        self._reason = reason
 
     def get_recipients(self):
         return [(self._to, 'en')]

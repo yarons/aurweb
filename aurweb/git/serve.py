@@ -221,10 +221,7 @@ def pkgreq_close(reqid, user, reason, comments, autoclose=False):
     conn.commit()
     conn.close()
 
-    if not userid:
-        userid = 0
-    subprocess.Popen((notify_cmd, 'request-close', str(userid), str(reqid),
-                      reason)).wait()
+    subprocess.Popen((notify_cmd, 'request-close', str(reqid))).wait()
 
 
 def pkgbase_disown(pkgbase, user, privileged):
