@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 
 import email.mime.text
+import email.utils
+import smtplib
 import subprocess
 import sys
 import textwrap
@@ -54,6 +56,9 @@ class Notification:
     def get_body_fmt(self, lang):
         body = ''
         for line in self.get_body(lang).splitlines():
+            if line == '-- ':
+                body += '-- \n'
+                continue
             body += textwrap.fill(line, break_long_words=False) + '\n'
         for i, ref in enumerate(self.get_refs()):
             body += '\n' + '[%d] %s' % (i + 1, ref)
@@ -76,24 +81,58 @@ class Notification:
             msg['Reply-to'] = reply_to
             msg['To'] = to
             msg['X-AUR-Reason'] = reason
+            msg['Date'] = email.utils.formatdate(localtime=True)
 
             for key, value in self.get_headers().items():
                 msg[key] = value
 
-            p = subprocess.Popen([sendmail, '-t', '-oi'],
-                                 stdin=subprocess.PIPE)
-            p.communicate(msg.as_bytes())
+            sendmail = aurweb.config.get('notifications', 'sendmail')
+            if sendmail:
+                # send email using the sendmail binary specified in the
+                # configuration file
+                p = subprocess.Popen([sendmail, '-t', '-oi'],
+                                     stdin=subprocess.PIPE)
+                p.communicate(msg.as_bytes())
+            else:
+                # send email using smtplib; no local MTA required
+                server_addr = aurweb.config.get('notifications', 'smtp-server')
+                server_port = aurweb.config.getint('notifications', 'smtp-port')
+                use_ssl = aurweb.config.getboolean('notifications', 'smtp-use-ssl')
+                use_starttls = aurweb.config.getboolean('notifications', 'smtp-use-starttls')
+                user = aurweb.config.get('notifications', 'smtp-user')
+                passwd = aurweb.config.get('notifications', 'smtp-password')
+
+                if use_ssl:
+                    server = smtplib.SMTP_SSL(server_addr, server_port)
+                else:
+                    server = smtplib.SMTP(server_addr, server_port)
+
+                if use_starttls:
+                    server.ehlo()
+                    server.starttls()
+                    server.ehlo()
+
+                if user and passwd:
+                    server.login(user, passwd)
+
+                server.set_debuglevel(0)
+                server.sendmail(sender, recipient, msg.as_bytes())
+                server.quit()
 
 
 class ResetKeyNotification(Notification):
     def __init__(self, conn, uid):
-        cur = conn.execute('SELECT UserName, Email, LangPreference, ' +
-                           'ResetKey FROM Users WHERE ID = ?', [uid])
-        self._username, self._to, self._lang, self._resetkey = cur.fetchone()
+        cur = conn.execute('SELECT UserName, Email, BackupEmail, ' +
+                           'LangPreference, ResetKey ' +
+                           'FROM Users WHERE ID = ?', [uid])
+        self._username, self._to, self._backup, self._lang, self._resetkey = cur.fetchone()
         super().__init__()
 
     def get_recipients(self):
-        return [(self._to, self._lang)]
+        if self._backup:
+            return [(self._to, self._lang), (self._backup, self._lang)]
+        else:
+            return [(self._to, self._lang)]
 
     def get_subject(self, lang):
         return self._l10n.translate('AUR Password Reset', lang)
@@ -151,7 +190,7 @@ class CommentNotification(Notification):
         body = self._l10n.translate(
                 '{user} [1] added the following comment to {pkgbase} [2]:',
                 lang).format(user=self._user, pkgbase=self._pkgbase)
-        body += '\n\n' + self._text + '\n\n'
+        body += '\n\n' + self._text + '\n\n-- \n'
         dnlabel = self._l10n.translate('Disable notifications', lang)
         body += self._l10n.translate(
                 'If you no longer wish to receive notifications about this '
@@ -196,7 +235,7 @@ class UpdateNotification(Notification):
                                     '{pkgbase} [2].', lang).format(
                                             user=self._user,
                                             pkgbase=self._pkgbase)
-        body += '\n\n'
+        body += '\n\n-- \n'
         dnlabel = self._l10n.translate('Disable notifications', lang)
         body += self._l10n.translate(
                 'If you no longer wish to receive notifications about this '
@@ -362,6 +401,7 @@ class DeleteNotification(Notification):
             dnlabel = self._l10n.translate('Disable notifications', lang)
             return self._l10n.translate(
                     '{user} [1] merged {old} [2] into {new} [3].\n\n'
+                    '-- \n'
                     'If you no longer wish receive notifications about the '
                     'new package, please go to [3] and click "{label}".',
                     lang).format(user=self._user, old=self._old_pkgbase,

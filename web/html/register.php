@@ -23,6 +23,7 @@ if (in_request("Action") == "NewAccount") {
 		1,
 		0,
 		in_request("E"),
+		in_request("BE"),
 		in_request("H"),
 		'',
 		'',
@@ -39,6 +40,7 @@ if (in_request("Action") == "NewAccount") {
 		in_request("ON"),
 		0,
 		"",
+		'',
 		in_request("captcha_salt"),
 		in_request("captcha"),
 	);
@@ -51,6 +53,7 @@ if (in_request("Action") == "NewAccount") {
 			1,
 			0,
 			in_request("E"),
+			in_request("BE"),
 			in_request("H"),
 			'',
 			'',
@@ -67,13 +70,14 @@ if (in_request("Action") == "NewAccount") {
 			in_request("ON"),
 			0,
 			"",
+			'',
 			in_request("captcha_salt"),
 			in_request("captcha")
 		);
 	}
 } else {
 	print '<p>' . __("Use this form to create an account.") . '</p>';
-	display_account_form("NewAccount", "", "", "", "", "", "", "", "", $LANG);
+	display_account_form("NewAccount", "", "", "", "", "", "", "", "", "", $LANG);
 }
 
 echo '</div>';

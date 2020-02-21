@@ -13,46 +13,64 @@ repo_path = aurweb.config.get('serve', 'repo-path')
 commit_uri = aurweb.config.get('options', 'commit_uri')
 
 
-class LinkifyPreprocessor(markdown.preprocessors.Preprocessor):
-    _urlre = re.compile(r'(\b(?:https?|ftp):\/\/[\w\/\#~:.?+=&%@!\-;,]+?'
-                        r'(?=[.:?\-;,]*(?:[^\w\/\#~:.?+=&%@!\-;,]|$)))')
-
-    def run(self, lines):
-        return [self._urlre.sub(r'<\1>', line) for line in lines]
-
-
 class LinkifyExtension(markdown.extensions.Extension):
+    """
+    Turn URLs into links, even without explicit markdown.
+    Do not linkify URLs in code blocks.
+    """
+
+    # Captures http(s) and ftp URLs until the first non URL-ish character.
+    # Excludes trailing punctuation.
+    _urlre = (r'(\b(?:https?|ftp):\/\/[\w\/\#~:.?+=&%@!\-;,]+?'
+              r'(?=[.:?\-;,]*(?:[^\w\/\#~:.?+=&%@!\-;,]|$)))')
+
     def extendMarkdown(self, md, md_globals):
-        md.preprocessors.add('linkify', LinkifyPreprocessor(md), '_end')
+        processor = markdown.inlinepatterns.AutolinkInlineProcessor(self._urlre, md)
+        # Register it right after the default <>-link processor (priority 120).
+        md.inlinePatterns.register(processor, 'linkify', 119)
 
 
-class FlysprayLinksPreprocessor(markdown.preprocessors.Preprocessor):
-    _fsre = re.compile(r'\b(FS#(\d+))\b')
-    _sub = r'[\1](https://bugs.archlinux.org/task/\2)'
+class FlysprayLinksInlineProcessor(markdown.inlinepatterns.InlineProcessor):
+    """
+    Turn Flyspray task references like FS#1234 into links to bugs.archlinux.org.
 
-    def run(self, lines):
-        return [self._fsre.sub(self._sub, line) for line in lines]
+    The pattern's capture group 0 is the text of the link and group 1 is the
+    Flyspray task ID.
+    """
+
+    def handleMatch(self, m, data):
+        el = markdown.util.etree.Element('a')
+        el.set('href', f'https://bugs.archlinux.org/task/{m.group(1)}')
+        el.text = markdown.util.AtomicString(m.group(0))
+        return el, m.start(0), m.end(0)
 
 
 class FlysprayLinksExtension(markdown.extensions.Extension):
     def extendMarkdown(self, md, md_globals):
-        preprocessor = FlysprayLinksPreprocessor(md)
-        md.preprocessors.add('flyspray-links', preprocessor, '_end')
+        processor = FlysprayLinksInlineProcessor(r'\bFS#(\d+)\b',md)
+        md.inlinePatterns.register(processor, 'flyspray-links', 118)
 
 
-class GitCommitsPreprocessor(markdown.preprocessors.Preprocessor):
-    _oidre = re.compile(r'(\b)([0-9a-f]{7,40})(\b)')
+class GitCommitsInlineProcessor(markdown.inlinepatterns.InlineProcessor):
+    """
+    Turn Git hashes like f7f5152be5ab into links to AUR's cgit.
+
+    Only commit references that do exist are linkified. Hashes are shortened to
+    shorter non-ambiguous prefixes. Only hashes with at least 7 digits are
+    considered.
+    """
+
     _repo = pygit2.Repository(repo_path)
-    _head = None
 
     def __init__(self, md, head):
         self._head = head
-        super(markdown.preprocessors.Preprocessor, self).__init__(md)
+        super().__init__(r'\b([0-9a-f]{7,40})\b', md)
 
-    def handleMatch(self, m):
-        oid = m.group(2)
+    def handleMatch(self, m, data):
+        oid = m.group(1)
         if oid not in self._repo:
-            return oid
+            # Unkwown OID; preserve the orginal text.
+            return None, None, None
 
         prefixlen = 12
         while prefixlen < 40:
@@ -60,13 +78,10 @@ class GitCommitsPreprocessor(markdown.preprocessors.Preprocessor):
                 break
             prefixlen += 1
 
-        html = '[`' + oid[:prefixlen] + '`]'
-        html += '(' + commit_uri % (self._head, oid[:prefixlen]) + ')'
-
-        return html
-
-    def run(self, lines):
-        return [self._oidre.sub(self.handleMatch, line) for line in lines]
+        el = markdown.util.etree.Element('a')
+        el.set('href', commit_uri % (self._head, oid[:prefixlen]))
+        el.text = markdown.util.AtomicString(oid[:prefixlen])
+        return el, m.start(0), m.end(0)
 
 
 class GitCommitsExtension(markdown.extensions.Extension):
@@ -77,8 +92,8 @@ class GitCommitsExtension(markdown.extensions.Extension):
         super(markdown.extensions.Extension, self).__init__()
 
     def extendMarkdown(self, md, md_globals):
-        preprocessor = GitCommitsPreprocessor(md, self._head)
-        md.preprocessors.add('git-commits', preprocessor, '_end')
+        processor = GitCommitsInlineProcessor(md, self._head)
+        md.inlinePatterns.register(processor, 'git-commits', 117)
 
 
 class HeadingTreeprocessor(markdown.treeprocessors.Treeprocessor):
@@ -92,7 +107,8 @@ class HeadingTreeprocessor(markdown.treeprocessors.Treeprocessor):
 
 class HeadingExtension(markdown.extensions.Extension):
     def extendMarkdown(self, md, md_globals):
-        md.treeprocessors.add('heading', HeadingTreeprocessor(md), '_end')
+        # Priority doesn't matter since we don't conflict with other processors.
+        md.treeprocessors.register(HeadingTreeprocessor(md), 'heading', 30)
 
 
 def get_comment(conn, commentid):

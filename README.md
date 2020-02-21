@@ -9,7 +9,7 @@ and installed using the Arch Linux package manager `pacman`.
 The aurweb project includes
 
 * A web interface to search for packaging scripts and display package details.
-* A SSH/Git interface to submit and update packages and package meta data.
+* An SSH/Git interface to submit and update packages and package meta data.
 * Community features such as comments, votes, package flagging and requests.
 * Editing/deletion of packages and accounts by Trusted Users and Developers.
 * Area for Trusted Users to post AUR-related proposals and vote on them.
@@ -17,32 +17,14 @@ The aurweb project includes
 Directory Layout
 ----------------
 
-aurweb::
-	aurweb Python modules.
-
-conf::
-	Configuration and configuration templates.
-
-doc::
-	Project documentation.
-
-po::
-	Translation files for strings in the aurweb interface.
-
-schema::
-	Schema for the SQL database. Script for dummy data generation.
-
-scripts::
-	Scripts for AUR maintenance.
-
-test::
-	Test suite and test cases.
-
-upgrading::
-	Instructions for upgrading setups from one release to another.
-
-web::
-	Web interface for the AUR.
+* `aurweb`: aurweb Python modules, Git interface and maintenance scripts
+* `conf`: configuration and configuration templates
+* `doc`: project documentation
+* `po`: translation files for strings in the aurweb interface
+* `schema`: schema for the SQL database
+* `test`: test suite and test cases
+* `upgrading`: instructions for upgrading setups from one release to another
+* `web`: web interface for the AUR
 
 Links
 -----
@@ -56,3 +38,11 @@ Links
 * Questions, comments, and patches related to aurweb can be sent to the AUR
   development mailing list: aur-dev@archlinux.org -- mailing list archives:
   https://mailman.archlinux.org/mailman/listinfo/aur-dev
+
+Translations
+------------
+
+Translations are welcome via our Transifex project at
+https://www.transifex.com/lfleischer/aurweb; see `doc/i18n.txt` for details.
+
+![Transifex](http://www.transifex.net/projects/p/aurweb/chart/image_png)

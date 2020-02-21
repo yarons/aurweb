@@ -76,7 +76,6 @@
 			<label for="id_email"><?= __("Email Address") ?>:</label>
 			<input type="text" size="30" maxlength="254" name="E" id="id_email" value="<?= htmlspecialchars($E,ENT_QUOTES) ?>" /> (<?= __("required") ?>)
 		</p>
-
 		<p>
 			<em><?= __("Please ensure you correctly entered your email address, otherwise you will be locked out.") ?></em>
 		</p>
@@ -85,18 +84,21 @@
 			<label for="id_hide"><?= __("Hide Email Address") ?>:</label>
 			<input type="checkbox" name="H" id="id_hide" <?= $H ? 'checked="checked"' : '' ?> />
 		</p>
-
-		<?php if ($A == "UpdateAccount"): ?>
 		<p>
-			<label for="id_passwd1"><?= __("Password") ?>:</label>
-			<input type="password" size="30" name="P" id="id_passwd1" value="<?= $P ?>" />
+			<em><?= __("If you do not hide your email address, it is visible to all registered AUR users. If you hide your email address, it is visible to members of the Arch Linux staff only.") ?></em>
 		</p>
 
 		<p>
-			<label for="id_passwd2"><?= __("Re-type password") ?>:</label>
-			<input type="password" size="30" name="C" id="id_passwd2" value="<?= $C ?>" />
+			<label for="id_backup_email"><?= __("Backup Email Address") ?>:</label>
+			<input type="text" size="30" maxlength="254" name="BE" id="id_backup_email" value="<?= htmlspecialchars($BE, ENT_QUOTES) ?>" />
 		</p>
-		<?php endif; ?>
+		<p>
+			<em>
+				<?= __("Optionally provide a secondary email address that can be used to restore your account in case you lose access to your primary email address.") ?>
+				<?= __("Password reset links are always sent to both your primary and your backup email address.") ?>
+				<?= __("Your backup email address is always only visible to members of the Arch Linux staff, independent of the %s setting.", "<em>" . __("Hide Email Address") . "</em>") ?>
+			</em>
+		</p>
 
 		<p>
 			<label for="id_realname"><?= __("Real Name") ?>:</label>
@@ -150,6 +152,21 @@
 		</p>
 	</fieldset>
 
+	<?php if ($A == "UpdateAccount"): ?>
+	<fieldset>
+		<legend><?= __("If you want to change the password, enter a new password and confirm the new password by entering it again.") ?></legend>
+		<p>
+			<label for="id_passwd1"><?= __("Password") ?>:</label>
+			<input type="password" size="30" name="P" id="id_passwd1" value="<?= $P ?>" />
+		</p>
+
+		<p>
+			<label for="id_passwd2"><?= __("Re-type password") ?>:</label>
+			<input type="password" size="30" name="C" id="id_passwd2" value="<?= $C ?>" />
+		</p>
+	</fieldset>
+	<?php endif; ?>
+
 	<fieldset>
 		<legend><?= __("The following information is only required if you want to submit packages to the Arch User Repository.") ?></legend>
 		<p>
@@ -174,16 +191,22 @@
 		</p>
 	</fieldset>
 
-	<?php if ($A != "UpdateAccount"): ?>
 	<fieldset>
+	<?php if ($A == "UpdateAccount"): ?>
+		<legend><?= __("To confirm the profile changes, please enter your current password:") ?></legend>
+		<p>
+			<label for="id_passwd_current"><?= __("Your current password") ?>:</label>
+			<input type="password" size="30" name="passwd" id="id_passwd_current" value="" />
+		</p>
+	<?php else: ?>
 		<legend><?= __("To protect the AUR against automated account creation, we kindly ask you to provide the output of the following command:") ?> <code><?= htmlspecialchars($captcha_challenge) ?></code></legend>
 		<p>
 			<label for="id_captcha"><?= __("Answer") ?>:</label>
 			<input type="text" size="30" maxlength="6" name="captcha" id="id_captcha" value="<?= htmlspecialchars($captcha, ENT_QUOTES) ?>" /> (<?= __("required") ?>)
 			<input type="hidden" name="captcha_salt" value="<?= htmlspecialchars($captcha_salt) ?>" />
 		</p>
-	</fieldset>
 	<?php endif; ?>
+	</fieldset>
 
 	<fieldset>
 		<p>

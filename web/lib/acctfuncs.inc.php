@@ -46,6 +46,7 @@ function html_format_pgp_fingerprint($fingerprint) {
  * @param string $T The account type of the displayed user
  * @param string $S Whether the displayed user has a suspended account
  * @param string $E The e-mail address of the displayed user
+ * @param string $BE The backup e-mail address of the displayed user
  * @param string $H Whether the e-mail address of the displayed user is hidden
  * @param string $P The password value of the displayed user
  * @param string $C The confirmed password value of the displayed user
@@ -67,7 +68,7 @@ function html_format_pgp_fingerprint($fingerprint) {
  *
  * @return void
  */
-function display_account_form($A,$U="",$T="",$S="",$E="",$H="",$P="",$C="",$R="",
+function display_account_form($A,$U="",$T="",$S="",$E="",$BE="",$H="",$P="",$C="",$R="",
 		$L="",$TZ="",$HP="",$I="",$K="",$PK="",$J="",$CN="",$UN="",$ON="",$UID=0,$N="",$captcha_salt="",$captcha="") {
 	global $SUPPORTED_LANGS;
 
@@ -95,6 +96,7 @@ function display_account_form($A,$U="",$T="",$S="",$E="",$H="",$P="",$C="",$R=""
  * @param string $T The account type for the user
  * @param string $S Whether or not the account is suspended
  * @param string $E The e-mail address for the user
+ * @param string $BE The backup e-mail address for the user
  * @param string $H Whether or not the e-mail address should be hidden
  * @param string $P The password for the user
  * @param string $C The confirmed password for the user
@@ -111,13 +113,14 @@ function display_account_form($A,$U="",$T="",$S="",$E="",$H="",$P="",$C="",$R=""
  * @param string $ON Whether to notify of ownership changes
  * @param string $UID The user ID of the modified account
  * @param string $N The username as present in the database
+ * @param string $passwd The password of the logged in user.
  * @param string $captcha_salt The salt used for the CAPTCHA.
  * @param string $captcha The CAPTCHA answer.
  *
  * @return array Boolean indicating success and message to be printed
  */
-function process_account_form($TYPE,$A,$U="",$T="",$S="",$E="",$H="",$P="",$C="",
-		$R="",$L="",$TZ="",$HP="",$I="",$K="",$PK="",$J="",$CN="",$UN="",$ON="",$UID=0,$N="",$captcha_salt="",$captcha="") {
+function process_account_form($TYPE,$A,$U="",$T="",$S="",$E="",$BE="",$H="",$P="",$C="",
+		$R="",$L="",$TZ="",$HP="",$I="",$K="",$PK="",$J="",$CN="",$UN="",$ON="",$UID=0,$N="",$passwd="",$captcha_salt="",$captcha="") {
 	global $SUPPORTED_LANGS;
 
 	$error = '';
@@ -132,11 +135,11 @@ function process_account_form($TYPE,$A,$U="",$T="",$S="",$E="",$H="",$P="",$C=""
 
 	$dbh = DB::connect();
 
-	if(isset($_COOKIE['AURSID'])) {
-		$editor_user = uid_from_sid($_COOKIE['AURSID']);
-	}
-	else {
-		$editor_user = null;
+	if (isset($_COOKIE['AURSID'])) {
+		$uid_session = uid_from_sid($_COOKIE['AURSID']);
+		if (!$error && check_passwd($uid_session, $passwd) != 1) {
+			$error = __("Invalid password.");
+		}
 	}
 
 	if (empty($E) || empty($U)) {
@@ -159,7 +162,10 @@ function process_account_form($TYPE,$A,$U="",$T="",$S="",$E="",$H="",$P="",$C=""
 			. "</li>\n</ul>";
 	}
 
-	if (!$error && $P && $C && ($P != $C)) {
+	if (!$error && $P && !$C) {
+		$error = __("Please confirm your new password.");
+	}
+	if (!$error && $P && $P != $C) {
 		$error = __("Password fields do not match.");
 	}
 	if (!$error && $P != '' && !good_passwd($P)) {
@@ -170,6 +176,9 @@ function process_account_form($TYPE,$A,$U="",$T="",$S="",$E="",$H="",$P="",$C=""
 
 	if (!$error && !valid_email($E)) {
 		$error = __("The email address is invalid.");
+	}
+	if (!$error && $BE && !valid_email($BE)) {
+		$error = __("The backup email address is invalid.");
 	}
 
 	if (!$error && !empty($HP) && !valid_homepage($HP)) {
@@ -307,6 +316,7 @@ function process_account_form($TYPE,$A,$U="",$T="",$S="",$E="",$H="",$P="",$C=""
 		}
 		$U = $dbh->quote($U);
 		$E = $dbh->quote($E);
+		$BE = $dbh->quote($BE);
 		$P = $dbh->quote($P);
 		$R = $dbh->quote($R);
 		$L = $dbh->quote($L);
@@ -315,9 +325,9 @@ function process_account_form($TYPE,$A,$U="",$T="",$S="",$E="",$H="",$P="",$C=""
 		$I = $dbh->quote($I);
 		$K = $dbh->quote(str_replace(" ", "", $K));
 		$q = "INSERT INTO Users (AccountTypeID, Suspended, ";
-		$q.= "InactivityTS, Username, Email, Passwd , ";
+		$q.= "InactivityTS, Username, Email, BackupEmail, Passwd , ";
 		$q.= "RealName, LangPreference, Timezone, Homepage, IRCNick, PGPKey) ";
-		$q.= "VALUES (1, 0, 0, $U, $E, $P, $R, $L, $TZ, ";
+		$q.= "VALUES (1, 0, 0, $U, $E, $BE, $P, $R, $L, $TZ, ";
 		$q.= "$HP, $I, $K)";
 		$result = $dbh->exec($q);
 		if (!$result) {
@@ -370,6 +380,7 @@ function process_account_form($TYPE,$A,$U="",$T="",$S="",$E="",$H="",$P="",$C=""
 			$q.= ", Suspended = 0";
 		}
 		$q.= ", Email = " . $dbh->quote($E);
+		$q.= ", BackupEmail = " . $dbh->quote($BE);
 		if ($H) {
 			$q.= ", HideEmail = 1";
 		} else {
@@ -648,6 +659,7 @@ function try_login() {
 	}
 	header("Location: " . get_uri($referer));
 	$login_error = "";
+	return array('SID' => $new_sid, 'error' => null);
 }
 
 /**
@@ -751,13 +763,13 @@ function create_resetkey($resetkey, $uid) {
 /**
  * Send a reset key to a specific e-mail address
  *
- * @param string $email E-mail address of the user resetting their password
+ * @param string $user User name or email address of the user
  * @param bool $welcome Whether to use the welcome message
  *
  * @return void
  */
-function send_resetkey($email, $welcome=false) {
-	$uid = uid_from_email($email);
+function send_resetkey($user, $welcome=false) {
+	$uid = uid_from_loginname($user);
 	if ($uid == null) {
 		return;
 	}
@@ -775,11 +787,11 @@ function send_resetkey($email, $welcome=false) {
  *
  * @param string $password The new password
  * @param string $resetkey Code e-mailed to a user to reset a password
- * @param string $email E-mail address of the user resetting their password
+ * @param string $user User name or email address of the user
  *
  * @return string|void Redirect page if successful, otherwise return error message
  */
-function password_reset($password, $resetkey, $email) {
+function password_reset($password, $resetkey, $user) {
 	$hash = password_hash($password, PASSWORD_DEFAULT);
 
 	$dbh = DB::connect();
@@ -788,7 +800,8 @@ function password_reset($password, $resetkey, $email) {
 	$q.= "ResetKey = '' ";
 	$q.= "WHERE ResetKey != '' ";
 	$q.= "AND ResetKey = " . $dbh->quote($resetkey) . " ";
-	$q.= "AND Email = " . $dbh->quote($email);
+	$q.= "AND (Email = " . $dbh->quote($user) . " OR ";
+	$q.= "UserName = " . $dbh->quote($user) . ")";
 	$result = $dbh->exec($q);
 
 	if (!$result) {
