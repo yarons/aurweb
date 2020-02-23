@@ -1,0 +1,5 @@
+    Match User aur
+        PasswordAuthentication no
+        AuthorizedKeysCommand /usr/local/bin/aurweb-git-auth "%t" "%k"
+        AuthorizedKeysCommandUser aur
+        AcceptEnv AUR_OVERWRITE

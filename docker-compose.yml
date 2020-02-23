@@ -6,6 +6,7 @@ services:
       - ${PWD}:/srv/html/
     ports:
       - "80:80"
+      - "2022:22"
     networks:
       - aurnet
   db:

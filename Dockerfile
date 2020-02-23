@@ -15,5 +15,6 @@ RUN useradd -U -d /srv/http/aurweb -c 'AUR user' aur
 
 COPY conf/config.defaults /etc/aurweb/config
 
+RUN cat ssh_config >> /etc/sshd_config
 RUN chown -R http: /srv/http/
 CMD ["/srv/http/aurweb/docker-entrypoint.sh"]
