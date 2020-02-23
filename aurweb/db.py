@@ -24,10 +24,11 @@ def get_sqlalchemy_url():
             password=aurweb.config.get('database', 'password'),
             host=aurweb.config.get('database', 'host'),
             database=aurweb.config.get('database', 'name'),
-            query={
-                'unix_socket': aurweb.config.get('database', 'socket'),
-                'buffered': True,
-            },
+            if host == 'localhost':
+              query={
+                  'unix_socket': aurweb.config.get('database', 'socket'),
+                  'buffered': True,
+              },
         )
     elif aur_db_backend == 'sqlite':
         return sqlalchemy.engine.url.URL(
@@ -51,12 +52,19 @@ class Connection:
             aur_db_user = aurweb.config.get('database', 'user')
             aur_db_pass = aurweb.config.get('database', 'password')
             aur_db_socket = aurweb.config.get('database', 'socket')
-            self._conn = mysql.connector.connect(host=aur_db_host,
-                                                 user=aur_db_user,
-                                                 passwd=aur_db_pass,
-                                                 db=aur_db_name,
-                                                 unix_socket=aur_db_socket,
-                                                 buffered=True)
+            if aur_db_host == 'localhost':
+              self._conn = mysql.connector.connect(host=aur_db_host,
+                                                   user=aur_db_user,
+                                                   passwd=aur_db_pass,
+                                                   db=aur_db_name,
+                                                   buffered=True)
+            else:
+              self._conn = mysql.connector.connect(host=aur_db_host,
+                                                   user=aur_db_user,
+                                                   passwd=aur_db_pass,
+                                                   db=aur_db_name,
+                                                   socket=aur_db_socket,
+                                                   buffered=True)
             self._paramstyle = mysql.connector.paramstyle
         elif aur_db_backend == 'sqlite':
             aur_db_name = aurweb.config.get('database', 'name')

@@ -1,0 +1,31 @@
+version: "2"
+services:
+  web:
+    build: .
+    volumes:
+      - ${PWD}:/srv/html/
+    ports:
+      - "80:80"
+    networks:
+      - aurnet
+  db:
+    image: mysql:8
+    volumes:
+      - db_data:/var/lib/mysql
+      - ${PWD}/schema/setup.sql:/docker-entrypoint-initdb.d/setup.sql
+    restart: always
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: aur
+      MYSQL_DATABASE: AUR
+      MYSQL_USER: aur
+      MYSQL_PASSWORD: aur
+    networks:
+      - aurnet
+
+volumes:
+  db_data: {}
+
+networks:
+  aurnet: {}
