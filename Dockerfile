@@ -17,5 +17,3 @@ COPY conf/config.defaults /etc/aurweb/config
 
 RUN chown -R http: /srv/http/
 CMD ["/srv/http/aurweb/docker-entrypoint.sh"]
-#RUN python -m aurweb.initdb
-#RUN docker-php-ext-install pdo_mysql
