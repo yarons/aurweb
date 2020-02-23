@@ -23,6 +23,12 @@ services:
     networks:
       - aurnet
 
+  memcache:
+    image: memcached
+    restart: always
+    networks:
+      - aurnet
+
 volumes:
   db_data: {}
 
