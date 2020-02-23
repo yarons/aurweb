@@ -325,8 +325,11 @@ test_expect_success 'Test subject and body of request open notifications for mer
 '
 
 test_expect_success 'Test subject and body of request close notifications.' '
+	cat <<-EOD | sqlite3 aur.db &&
+	UPDATE PackageRequests SET Status = 2, ClosedUID = 1 WHERE ID = 3001;
+	EOD
 	>sendmail.out &&
-	"$NOTIFY" request-close 1 3001 accepted &&
+	"$NOTIFY" request-close 3001 &&
 	grep ^Subject: sendmail.out >actual &&
 	cat <<-EOD >expected &&
 	Subject: [PRQ#3001] Deletion Request for foobar Accepted
@@ -343,8 +346,11 @@ test_expect_success 'Test subject and body of request close notifications.' '
 '
 
 test_expect_success 'Test subject and body of request close notifications (auto-accept).' '
+	cat <<-EOD | sqlite3 aur.db &&
+	UPDATE PackageRequests SET Status = 2, ClosedUID = NULL WHERE ID = 3001;
+	EOD
 	>sendmail.out &&
-	"$NOTIFY" request-close 0 3001 accepted &&
+	"$NOTIFY" request-close 3001 &&
 	grep ^Subject: sendmail.out >actual &&
 	cat <<-EOD >expected &&
 	Subject: [PRQ#3001] Deletion Request for foobar Accepted
@@ -361,10 +367,10 @@ test_expect_success 'Test subject and body of request close notifications (auto-
 
 test_expect_success 'Test subject and body of request close notifications with closure comment.' '
 	cat <<-EOD | sqlite3 aur.db &&
-	UPDATE PackageRequests SET ClosureComment = "This is a test closure comment." WHERE ID = 3001;
+	UPDATE PackageRequests SET Status = 2, ClosedUID = 1, ClosureComment = "This is a test closure comment." WHERE ID = 3001;
 	EOD
 	>sendmail.out &&
-	"$NOTIFY" request-close 1 3001 accepted &&
+	"$NOTIFY" request-close 3001 &&
 	grep ^Subject: sendmail.out >actual &&
 	cat <<-EOD >expected &&
 	Subject: [PRQ#3001] Deletion Request for foobar Accepted

@@ -254,7 +254,7 @@ function pkgreq_close($id, $reason, $comments, $auto_close=false) {
 	$dbh->exec($q);
 
 	/* Send e-mail notifications. */
-	notify(array('request-close', $uid, $id, $reason));
+	notify(array('request-close', $id));
 
 	return array(true, __("Request closed successfully."));
 }
